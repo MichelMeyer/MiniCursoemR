@@ -24,6 +24,13 @@ library(quantmod)
 
 
 Ativo <- "WEGE3.SA"
+# Ativo <- "VALE3.SA"
+# Ativo <- "PETR3.SA"
+# Ativo <- "ELET3.SA"
+# Ativo <- "USIM3.SA"
+# Ativo <- "BBDC3.SA"
+# Ativo <- "MGLU3.SA"
+# Ativo <- "ELET3.SA"
 
 # Baixando os dados de preço do ativo
 papel <- getSymbols(Ativo, auto.assign = F)
@@ -49,6 +56,10 @@ colnames(papel) <- gsub("[.]", "", colnames(papel))
 
 # Entendendo o objeto
 str(papel)
+# xts é uma classe especial de matriz onde os valores são indexados pela data.
+rownames(papel)
+index(papel)
+str(index(papel))
 
 # Explorando os dados
 View(papel)
@@ -80,7 +91,7 @@ plot(papel[, 1 : 4], main = Ativo)
 barChart(papel)
 barChart(papel, name = Ativo) # Nomeando o gráfico
 barChart(papel, log.scale = T, name = Ativo) # Colocando o log
-barChart(papel, log.scale = T, subset = "2017::2019", name = Ativo) # Reduzindo o período
+barChart(papel, log.scale = T, subset = "2019::2019", name = Ativo) # Reduzindo o período
 
 
 
@@ -106,38 +117,98 @@ addTA(TTR::ultimateOscillator(papel[, c("High", "Low", "Close")]))
 #################################################
 
 
-### Para criar e testar as estratégias, precisamos tomar alguns cuidados: ###
-
-# O primeiro cuidado é recortar em outro objeto somente os dados que queremos usar
-# no teste.
-
-# Isso é fácil quando usamos um loop com um corte de dados.
+## Algumas limitações por conta do tempo:
+# Somente operações compradas.
+# Somente preço de fechamento.
 
 periodoInicioTeste <- "2017-01-01"
 periodoTeste <- which(index(papel) >= periodoInicioTeste)
+periodoTeste <- periodoTeste[periodoTeste != 1]
+# A função which nos da a posição dos valores verdadeiros
 
-for(t in periodoTeste) {
+head(papel, 10)
+# A função head nos dá os n primeiros elementos do objeto.
+
+papelTestes <- head(papel, periodoTeste[1])
+
+tail(papelTestes, 10)
+# tail é a equivalente de head para as últimas linhas
+
+
+### Gerando colunas para guardar os resultados
+papel$resultado <- 0
+# Este resultado tera somente a nossa variação de capital diaria
+papel$posicao <- 0
+# Aqui vamos usar um código para cada posição no fim do dia
+# 0 para fora do ativo
+# 1 para comprado
+
+
+for(linha in periodoTeste) {
+  # for é uma função que cria um loop onde cada elemento da variável usada é processada.
+  # Neste exemplo, linha tera, para cada iteração no loop, um valor de periodoTeste.
+  ### Funções para controle dentro do loop:
+    # break encerra o loop naquele momento, ignorando iterações ainda não realizadas.
+    # next: encerra iteração atual no estado atual e começa a próxima.
+  
+  #break
+  
+  ### Cortando os dados ###
+  papelTestes <- head(papel, linha)
+  # Queremos trabalhar só com os dados que teriamos no momento da compra.
+  
+  ### Adicionando Indicadores ###
+  # Adicionando Bandas de Bollinger:
+  papelTestes <- cbind(papelTestes,
+                       TTR::BBands(HLC = papelTestes[, c("High", "Low", "Close")]))
+  
+  # Visualizando
+  tail(papelTestes[, c("Close", "dn", "mavg", "up")])
+  
+  
+  
+  ## Vamos comprar somente quando o preco de fechamento for menor que a banda inferior e
+  ## ainda não estivermos comprados
+  
+  if( ! papel[linha - 1, "posicao"][[1]])
+    if(papelTestes[linha, "Close"] < papelTestes[linha, "dn"]) {
+      # is.na é uma função para posições com valores faltantes.
+      
+      # stop()
+      # papelTestes[linha, ]
+      papel[linha, "posicao"] <- 1
+    }
+  
+  ## E vamos sair de nossa posição comprada somente quando o close alcançar a faixa superior
+  ## das Bandas de Bollinger
+  if(papel[linha - 1, "posicao"]) {
+    # Guardando o resultado do dia.
+    papel[linha, "resultado"] <- 
+      as.numeric(papel[linha, "Close"]) / as.numeric(papel[linha - 1, "Close"]) - 1
+    
+    if(papelTestes[linha, "Close"] > papelTestes[linha, "up"]) {
+      # stop()
+      papelTestes[linha, ]
+      # Testando a condição de venda
+      papel[linha, "posicao"] <- 0
+    } else {
+      papel[linha, "posicao"] <- 1
+    }
+  }
+  
+  print(paste("Lucro atual:",
+              round(prod(papel$resultado + 1) - 1, 3) * 100,
+              "% - Buy and hold:",
+              round((as.numeric(papel[linha, "Close"]) /
+                       as.numeric(papel[periodoTeste[1], "Close"]) - 1), 3) * 100,
+              "%"))
   
 }
-
-
 
 
 #############################################
 ### Verificando o retorno das estratégias ###
 #############################################
-
-
-
-# Cruzamento de Médias
-# Bandas de Bollinger
-# Indicador de Volume
-
-
-
-# Simulando uma operação
-
-
 
 
 
