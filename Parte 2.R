@@ -7,13 +7,14 @@
 ## Onde encontrar dados dos preços dos ativos ##
 ################################################
 
+install.packages("TTR")
 install.packages("quantmod", dependencies = F)
 # install.packages é uma função para baixar pacotes de terceiros para dentro do R
 # Estes pacotes são geralmente feitos pela comunidade de usuários.
 # O parametro "depedencies" diz para função que é para baixar todos os pacotes que o pacote
 # principal utiliza dentro dele.
 
-
+library(TTR)
 library(quantmod)
 # Além de baixarmos o pacote, temos que carregar ele dentro do ambiente do R
 # para isto que existe a função library, que carrega o pacote que especificarmos.
@@ -50,9 +51,9 @@ colnames(papel) <- gsub("[.]", "", colnames(papel))
 
 
 
-#########################################
-### Verificando a qualidade dos dados ###
-#########################################
+############################
+### Verificando os dados ###
+############################
 
 # Entendendo o objeto
 str(papel)
@@ -101,10 +102,8 @@ barChart(papel, log.scale = T, subset = "2019::2019", name = Ativo) # Reduzindo 
 ### Criando indicadores em cima destes dados ###
 ################################################
 
-install.packages("TTR")
-library(TTR)
 
-barChart(papel, log.scale = T, subset = "2017::2019", name = Ativo)
+barChart(papel, log.scale = T, subset = "2017::2019", name = Ativo, theme = "white")
 
 addTA(TTR::ZigZag(papel[, c("High", "Low")]), on = T)
 addTA(TTR::BBands(papel[, c("High", "Low", "Close")]), on = T)
@@ -143,6 +142,10 @@ papel$posicao <- 0
 # 0 para fora do ativo
 # 1 para comprado
 
+papel$retAcumEstrategia <- 0
+# Guarda o retorno acumulado da estratégia definida
+papel$retAcumpapel <- 0
+# Guarda o retorno acumulado da estratégiia buy and hold
 
 for(linha in periodoTeste) {
   # for é uma função que cria um loop onde cada elemento da variável usada é processada.
@@ -196,19 +199,24 @@ for(linha in periodoTeste) {
     }
   }
   
-  print(paste("Lucro atual:",
-              round(prod(papel$resultado + 1) - 1, 3) * 100,
-              "% - Buy and hold:",
-              round((as.numeric(papel[linha, "Close"]) /
-                       as.numeric(papel[periodoTeste[1], "Close"]) - 1), 3) * 100,
-              "%"))
+  papel$retAcumEstrategia[linha] <- prod(papel$resultado + 1)
+  papel$retAcumpapel[linha] <- as.numeric(papel[linha, "Close"]) /
+    as.numeric(papel[periodoTeste[1], "Close"])
   
+  print(paste("Lucro atual:",
+              round(papel$retAcumEstrategia[linha] - 1, 3) * 100,
+              "% - Buy and hold:",
+              round(papel$retAcumpapel[linha] - 1, 3) * 100,
+              "%"))
+  rm(papelTestes)
 }
 
 
-#############################################
-### Verificando o retorno das estratégias ###
-#############################################
+
+# Plotando o Retorno da Estratégia Escolhida x Buy and Hold
+plot(papel[periodoTeste, c("retAcumpapel", "retAcumEstrategia")],
+     main = "Retorno Estratégia x Buy and Hold")
+
 
 
 
