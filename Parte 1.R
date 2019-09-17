@@ -151,11 +151,9 @@ naoNumerico
 # Formas de atribuir
 b = 2 * (a <- 2)
 b * 2 -> c
-d <<- c ^ 2
 a
 b
 c
-d
 
 # Listando objetos (função ls)
 ls()
