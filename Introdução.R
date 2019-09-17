@@ -25,7 +25,7 @@
 # Criar objetos;
 # Fazer operações com estes objetos;
 # Onde encontrar dados dos preços dos ativos;
-# Como verificar a qualidade dos dados;
+# Como verificar os dados;
 # Criar indicadores em cima destes dados;
 # Criar estratégias com estes indicadores;
 # Verificar o retorno das estratégias;
